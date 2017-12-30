@@ -145,14 +145,20 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     @Override
     protected void onPause() {
         super.onPause();
-
+if (!isNetworkConnected()) {
+            Toast.makeText(this, "Check your Internet connection and try again", Toast.LENGTH_SHORT).show();
+            return;
+        }
         editor.commit();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
+if (!isNetworkConnected()) {
+            Toast.makeText(this, "Check your Internet connection and try again", Toast.LENGTH_SHORT).show();
+            return;
+        }
         calculate();
     }
 
