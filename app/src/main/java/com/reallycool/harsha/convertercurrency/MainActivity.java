@@ -310,9 +310,12 @@ if (!isNetworkConnected()) {
                 }
                 ready = true;
                 Calendar c = Calendar.getInstance();
+                editor= sh.edit();
                 editor.putString("ExcValues", ans);
                 editor.putBoolean("First", false);
                 editor.putString("Time", " " + c.getTime());
+                editor.commit();
+
             }
         }.execute();
 
