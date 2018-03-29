@@ -44,49 +44,60 @@ import java.util.concurrent.ExecutionException;
 public class MainActivity extends Activity implements AdapterView.OnItemSelectedListener {
     static String f = "";
     static String t = "";
+    static TextView answer;
+    static EditText edit;
     int first = 0, second = 0;
     int favorite = -1;
     String favstring;
     CheckBox def;
+    ArrayAdapter<String> adapter;
     double[] values;
-
     CheckBox fav;
-    static TextView answer;
     TextView tv2;
     double currency;
     SharedPreferences sh;
     SharedPreferences.Editor editor;
     Spinner to;
-    static EditText edit;
     boolean ready = false;
     Spinner from;
     Button but;
     ListView lv;
     ArrayList<Integer> al;
+    String ans = "";
     String cou[];
     ConnectivityManager cm = null;
+    String tra = "";
+
+    public static void hideSoftKeyboard(Activity activity) {
+        InputMethodManager inputMethodManager =
+                (InputMethodManager) activity.getSystemService(
+                        Activity.INPUT_METHOD_SERVICE);
+        inputMethodManager.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
+    }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
         setContentView(R.layout.content_main);
         def = (CheckBox) findViewById(R.id.checkBox);
         lv = (ListView) findViewById(R.id.listview);
         fav = (CheckBox) findViewById(R.id.checkBox2);
         sh = getApplicationContext().getSharedPreferences("Exchanges", 0);
-        if (!isNetworkConnected()) {
+        if (!isNetworkConnected()&&sh.getInt("First",0)<1) {
             Toast.makeText(this, "Check your Internet connection and try again", Toast.LENGTH_SHORT).show();
+            finish();
             return;
         }
         tv2 = (TextView) findViewById(R.id.tv2);
         from = (Spinner) findViewById(R.id.from);
         to = (Spinner) findViewById(R.id.to);
         cou = getResources().getStringArray(R.array.countries);
-        al = new ArrayList<Integer>();
+        al = new ArrayList<>();
         answer = (TextView) findViewById(R.id.answer);
         but = (Button) findViewById(R.id.button);
         edit = (EditText) findViewById(R.id.edit);
         edit.setText("1");
+
         favorite = sh.getInt("def", -1);
         favstring = sh.getString("favstring", "");
         Log.e(favstring, "Takealook");
@@ -120,21 +131,6 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             }
         });
 
-// Create an ArrayAdapter using the string array and a default spinner layout
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
-                R.array.countries, android.R.layout.simple_spinner_item);
-// Specify the layout to use when the list of choices appears
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        from.setAdapter(adapter);
-        from.setOnItemSelectedListener(this);
-        if (favorite > -1) {
-            from.setSelection(favorite);
-        }
-
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        to.setAdapter(adapter);
-        to.setOnItemSelectedListener(this);
-
     }
 
     private boolean isNetworkConnected() {
@@ -142,21 +138,13 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         return cm.getActiveNetworkInfo() != null;
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-if (!isNetworkConnected()) {
-            Toast.makeText(this, "Check your Internet connection and try again", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        editor.commit();
-    }
 
     @Override
     protected void onResume() {
         super.onResume();
-if (!isNetworkConnected()) {
-            Toast.makeText(this, "Check your Internet connection and try again", Toast.LENGTH_SHORT).show();
+        if (!isNetworkConnected()&&sh.getInt("First",0)>0) {
+            Toast.makeText(this, "Offline Mode", Toast.LENGTH_SHORT).show();
+            retrieve();
             return;
         }
         calculate();
@@ -181,7 +169,6 @@ if (!isNetworkConnected()) {
         Log.e(as.size() + "", "Sizes");
         ArrayAdapter adapter = new ArrayAdapter(this, R.layout.list_text, as);
         lv.setAdapter(adapter);
-
     }
 
     public void clicked(View view) {
@@ -222,7 +209,6 @@ if (!isNetworkConnected()) {
         Toast.makeText(this, al.size() + "", Toast.LENGTH_SHORT).show();
     }
 
-
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
 
@@ -248,23 +234,15 @@ if (!isNetworkConnected()) {
         }
     }
 
-    public static void hideSoftKeyboard(Activity activity) {
-        InputMethodManager inputMethodManager =
-                (InputMethodManager) activity.getSystemService(
-                        Activity.INPUT_METHOD_SERVICE);
-        inputMethodManager.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
-    }
-
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
 
     }
 
-    String tra = "";
-
     synchronized void calculate() {
         tra = "";
         new AsyncTask<URL, Integer, Long>() {
+
             @Override
             protected Long doInBackground(URL... params) {
 
@@ -294,58 +272,76 @@ if (!isNetworkConnected()) {
                 return null;
             }
 
-            String ans = "";
-
             @Override
             protected void onPostExecute(Long result) {
+                String temp=tra;
+                temp=temp.split("rates")[1];
+
+                temp=temp .substring(3, temp.length() - 2);
+                String t[] = temp.split(",");
+                for(int i=0;i<t.length;i++) {
+                    t[i] = t[i].substring(1, 4);
+                }
+                adapter = new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_spinner_item,t);
+
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                from.setAdapter(adapter);
+                from.setOnItemSelectedListener(MainActivity.this);
+                if (favorite > -1) {
+                    from.setSelection(favorite);
+                }
+                to.setAdapter(adapter);
+                to.setOnItemSelectedListener(MainActivity.this);
                 ans = tra.split("rates")[1];
                 ans = ans.substring(3, ans.length() - 2);
-                String[] v = ans.split(",");
-                int le = v.length;
-                Log.e("Finished", "Internet reading");
-                values = new double[le];
+                process();
 
-                for (int i = 0; i < le; i++) {
-                    values[i] = Double.parseDouble(v[i].substring(6, v[i].length()));
-                }
-                ready = true;
                 Calendar c = Calendar.getInstance();
                 editor= sh.edit();
                 editor.putString("ExcValues", ans);
-                editor.putBoolean("First", false);
+                editor.putInt("First", 1);
                 editor.putString("Time", " " + c.getTime());
                 editor.commit();
-
             }
         }.execute();
 
     }
-}
 
-//For offline mode
-   /*
-    if (Build.VERSION.SDK_INT >= 21 ) {
+    private void process() {
 
-        AudioAttributes audioAttrib = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_GAME)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build();
-
-        SoundPool.Builder builder= new SoundPool.Builder();
-        builder.setAudioAttributes(audioAttrib).setMaxStreams(MAX_STREAMS);
-
-        this.soundPool = builder.build();
-    }*/
-/*    private void retrieve() {
-        String str=sh.getString("ExcValues",null);
-        String[] v = str.split(",");
-        values = new double[v.length];
-        for(int i=0;i<v.length;i++  ) {
-            values[i]=  Double.parseDouble( v[i].substring(6,v[i].length()));
+        String[] v = ans.split(",");
+        int le = v.length;
+        values = new double[le];
+        for (int i = 0; i < le; i++) {
+            values[i] = Double.parseDouble(v[i].substring(6, v[i].length()));
         }
+        ready = true;
+    }
+//For offline mode
 
-        currency=currency/values[first];
-        currency=currency*values[second];
-        answer.setText(currency+" ");
-        tv2.setText("Last updated on:"+sh.getString("Time","")+"The rates are updated daily around 4PM CET.");
-    }*/
+    private void retrieve() {
+         ans=sh.getString("ExcValues",null);
+        String temp = sh.getString("ExcValues", "");
+
+        temp=temp.split("rates")[1];
+
+        temp=temp .substring(3, temp.length() - 2);
+        String t[] = temp.split(",");
+        for(int i=0;i<t.length;i++) {
+            t[i] = t[i].substring(1, 4);
+        }
+        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,t);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        from.setAdapter(adapter);
+        from.setOnItemSelectedListener(this);
+        if (favorite > -1) {
+            from.setSelection(favorite);
+        }
+        to.setAdapter(adapter);
+        to.setOnItemSelectedListener(this);
+         process();
+         tv2.setText("Last updated on:"+sh.getString("Time","")+"  The rates are updated daily around 4PM CET.");
+
+    }
+
+}
