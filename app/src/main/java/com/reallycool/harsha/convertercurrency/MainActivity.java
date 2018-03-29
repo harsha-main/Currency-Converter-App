@@ -59,6 +59,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     SharedPreferences.Editor editor;
     Spinner to;
     boolean ready = false;
+    int epos = 0;
     Spinner from;
     Button but;
     ListView lv;
@@ -76,14 +77,14 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState){
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.content_main);
         def = (CheckBox) findViewById(R.id.checkBox);
         lv = (ListView) findViewById(R.id.listview);
         fav = (CheckBox) findViewById(R.id.checkBox2);
         sh = getApplicationContext().getSharedPreferences("Exchanges", 0);
-        if (!isNetworkConnected()&&sh.getInt("First",0)<1) {
+        if (!isNetworkConnected() && sh.getInt("First", 0) < 1) {
             Toast.makeText(this, "Check your Internet connection and try again", Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -142,7 +143,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     @Override
     protected void onResume() {
         super.onResume();
-        if (!isNetworkConnected()&&sh.getInt("First",0)>0) {
+        if (!isNetworkConnected() && sh.getInt("First", 0) > 0) {
             Toast.makeText(this, "Offline Mode", Toast.LENGTH_SHORT).show();
             retrieve();
             return;
@@ -274,15 +275,16 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
             @Override
             protected void onPostExecute(Long result) {
-                String temp=tra;
-                temp=temp.split("rates")[1];
+                String temp = tra;
+                temp = temp.split("rates")[1];
 
-                temp=temp .substring(3, temp.length() - 2);
+                temp = temp.substring(3, temp.length() - 2);
                 String t[] = temp.split(",");
-                for(int i=0;i<t.length;i++) {
+                for (int i = 0; i < t.length; i++) {
                     t[i] = t[i].substring(1, 4);
                 }
-                adapter = new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_spinner_item,t);
+
+                adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, t);
 
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 from.setAdapter(adapter);
@@ -297,7 +299,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 process();
 
                 Calendar c = Calendar.getInstance();
-                editor= sh.edit();
+                editor = sh.edit();
                 editor.putString("ExcValues", ans);
                 editor.putInt("First", 1);
                 editor.putString("Time", " " + c.getTime());
@@ -320,17 +322,14 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 //For offline mode
 
     private void retrieve() {
-         ans=sh.getString("ExcValues",null);
-        String temp = sh.getString("ExcValues", "");
+        ans = sh.getString("ExcValues", null);
+        String temp = ans;
 
-        temp=temp.split("rates")[1];
-
-        temp=temp .substring(3, temp.length() - 2);
         String t[] = temp.split(",");
-        for(int i=0;i<t.length;i++) {
+        for (int i = 0; i < t.length; i++) {
             t[i] = t[i].substring(1, 4);
         }
-        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,t);
+        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, t);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         from.setAdapter(adapter);
         from.setOnItemSelectedListener(this);
@@ -339,8 +338,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         }
         to.setAdapter(adapter);
         to.setOnItemSelectedListener(this);
-         process();
-         tv2.setText("Last updated on:"+sh.getString("Time","")+"  The rates are updated daily around 4PM CET.");
+        process();
+        tv2.setText("Last updated on:" + sh.getString("Time", "") + "  The rates are updated daily around 4PM CET.");
 
     }
 
