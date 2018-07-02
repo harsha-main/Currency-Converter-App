@@ -1,24 +1,17 @@
 package com.reallycool.harsha.convertercurrency;
 
 import android.app.Activity;
-import android.app.backup.SharedPreferencesBackupHelper;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.media.AudioManager;
-import android.media.SoundPool;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -31,21 +24,21 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends Activity implements AdapterView.OnItemSelectedListener {
+import static android.view.View.SYSTEM_UI_FLAG_FULLSCREEN;
+import static android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+
+public class MainActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
     static String f = "";
     static String t = "";
     static TextView answer;
     static EditText edit;
+    final static String API = "f6eaab33ddce8601eddc39286b3d8d52";
     int first = 0, second = 0;
     int favorite = -1;
     String favstring;
@@ -65,7 +58,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     ListView lv;
     ArrayList<Integer> al;
     String ans = "";
-    String cou[];
+    String countryNames[];
     ConnectivityManager cm = null;
     String tra = "";
 
@@ -79,7 +72,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.content_main);
+        setContentView(R.layout.activity_main);
         def = (CheckBox) findViewById(R.id.checkBox);
         lv = (ListView) findViewById(R.id.listview);
         fav = (CheckBox) findViewById(R.id.checkBox2);
@@ -89,19 +82,28 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             finish();
             return;
         }
+        getWindow().getDecorView().setSystemUiVisibility(SYSTEM_UI_FLAG_FULLSCREEN | SYSTEM_UI_FLAG_IMMERSIVE_STICKY | SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+
         tv2 = (TextView) findViewById(R.id.tv2);
         from = (Spinner) findViewById(R.id.from);
         to = (Spinner) findViewById(R.id.to);
-        cou = getResources().getStringArray(R.array.countries);
         al = new ArrayList<>();
         answer = (TextView) findViewById(R.id.answer);
         but = (Button) findViewById(R.id.button);
         edit = (EditText) findViewById(R.id.edit);
         edit.setText("1");
-
+        edit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    handled = showResult();
+                }
+                return handled;
+            }
+        });
         favorite = sh.getInt("def", -1);
         favstring = sh.getString("favstring", "");
-        Log.e(favstring, "Takealook");
         if (!favstring.equals("")) {
             String s[] = favstring.split(" ");
             for (String string : s) {
@@ -114,24 +116,28 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (!ready) return false;
-                to.requestFocus();
-                hideSoftKeyboard(MainActivity.this);
-                String s = edit.getText().toString();
-                currency = Double.parseDouble(s);
-                if (currency == 0 || s == "0" || s == "00") {
-                    Toast.makeText(MainActivity.this, "Enter a value  first", Toast.LENGTH_SHORT).show();
-                    return true;
-                }
-                if (first == second) {
-                    Toast.makeText(MainActivity.this, "Choose currencies", Toast.LENGTH_SHORT).show();
-                    return true;
-                }
-                show();
-                return true;
+                return showResult();
             }
         });
 
+    }
+
+    private boolean showResult() {
+        if (!ready) return false;
+        to.requestFocus();
+        hideSoftKeyboard(MainActivity.this);
+        String s = edit.getText().toString();
+        currency = Double.parseDouble(s);
+        if (currency == 0 || s == "0" || s == "00") {
+            Toast.makeText(MainActivity.this, "Enter a value  first", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        if (first == second) {
+            Toast.makeText(MainActivity.this, "Choose currencies", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        show();
+        return true;
     }
 
     private boolean isNetworkConnected() {
@@ -165,7 +171,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             Log.e("String", str);
             if (str.length() > 11)
                 str = str.substring(0, str.length() - 11);
-            as.add(cou[al.get(i)] + " " + str);
+            as.add(countryNames[al.get(i)] + " " + str);
         }
         Log.e(as.size() + "", "Sizes");
         ArrayAdapter adapter = new ArrayAdapter(this, R.layout.list_text, as);
@@ -247,27 +253,22 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             @Override
             protected Long doInBackground(URL... params) {
 
-                String str = "http://api.fixer.io/latest";
+                String str = "http://data.fixer.io/latest?access_key=" + API;
                 URL url = null;
                 try {
                     url = new URL(str);
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                }
+
                 BufferedReader in = null;
-                try {
+
                     in = new BufferedReader(
                             new InputStreamReader(url.openStream()));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                String inputLine = null;
-                Log.e("something", "someone");
-                try {
+
+                    String inputLine = null;
+
                     while ((inputLine = in.readLine()) != null) {
                         tra += inputLine;
                     }
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
                 return null;
@@ -283,7 +284,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 for (int i = 0; i < t.length; i++) {
                     t[i] = t[i].substring(1, 4);
                 }
-
+                countryNames = t;
                 adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, t);
 
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -329,6 +330,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         for (int i = 0; i < t.length; i++) {
             t[i] = t[i].substring(1, 4);
         }
+        countryNames = t;
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, t);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         from.setAdapter(adapter);
